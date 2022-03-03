@@ -1,17 +1,13 @@
 #!/bin/bash
 
-#Args
 IPT="/sbin/iptables"
 cmdClear="/usr/bin/clear"
 
-#DNS servers from: cat /etc/resolv.conf
+# DNS servers you use: cat /etc/resolv.conf
 DNS_SERVER=$(grep nameserver /etc/resolv.conf | cut -d " " -f2 | tr "\n" ' ')
 
 #Emergency option
 #DNS_SERVER="8.8.8.8 8.8.4.4"
-
-#Allow connections to these package servers
-PACKAGE_SERVER="ftp.us.debian.org security.debian.org us.archive.ubuntu.com security.ubuntu.com"
 
 cat << _EOF_
 
@@ -23,6 +19,7 @@ cat << _EOF_
     4) Splunk Server
     5) SSH Server
     6) SSH Client
+    7) NTP Server
     0) Quit
 
 _EOF_
@@ -32,18 +29,13 @@ read -p "Select a service [0-6] to configure firewall rules for: " PROMPT
 #Deleting existing iptables rules
 $IPT -F
 $IPT -X
-$IPT -t nat -F
-$IPT -t nat -X
-$IPT -t mangle -F
-$IPT -t mangle -X
 
-#Set default policy to DROP
+#Set chain default policy to DROP
 $IPT -P INPUT   DROP
 $IPT -P FORWARD DROP
 $IPT -P OUTPUT  DROP
 
-## This should be one of the first rules.
-## so dns lookups are already allowed for your other rules
+# ACCEPT DNS lookups
 for ip in $DNS_SERVER
 do
 	echo "Allowing DNS lookups (tcp, udp port 53) to server '$ip'"
@@ -52,22 +44,6 @@ do
 	$IPT -A OUTPUT -p tcp -d $ip --dport 53 -m state --state NEW,ESTABLISHED -j ACCEPT
 	$IPT -A INPUT  -p tcp -s $ip --sport 53 -m state --state ESTABLISHED     -j ACCEPT
 done
-
-for ip in $PACKAGE_SERVER
-do
-	echo "Allow connection to '$ip' on port 21"
-	$IPT -A OUTPUT -p tcp -d "$ip" --dport 21  -m state --state NEW,ESTABLISHED -j ACCEPT
-	$IPT -A INPUT  -p tcp -s "$ip" --sport 21  -m state --state ESTABLISHED     -j ACCEPT
-
-	echo "Allow connection to '$ip' on port 80"
-	$IPT -A OUTPUT -p tcp -d "$ip" --dport 80  -m state --state NEW,ESTABLISHED -j ACCEPT
-	$IPT -A INPUT  -p tcp -s "$ip" --sport 80  -m state --state ESTABLISHED     -j ACCEPT
-
-	echo "Allow connection to '$ip' on port 443"
-	$IPT -A OUTPUT -p tcp -d "$ip" --dport 443 -m state --state NEW,ESTABLISHED -j ACCEPT
-	$IPT -A INPUT  -p tcp -s "$ip" --sport 443 -m state --state ESTABLISHED     -j ACCEPT
-done
-
 
 #######################################################################################################
 ## Required Rules
@@ -84,7 +60,7 @@ $IPT -A INPUT  -p tcp -m multiport --sports 80,443 -m state --state ESTABLISHED 
 $IPT -A OUTPUT -p icmp -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
 $IPT -A INPUT  -p icmp -m state --state ESTABLISHED,RELATED     -j ACCEPT
 
-#Allow outgoing connections to port 123 (ntp)"
+#Allow outgoing connections to port 123 (ntp)
 $IPT -A OUTPUT -p udp --dport 123 -m state --state NEW,ESTABLISHED -j ACCEPT
 $IPT -A INPUT  -p udp --sport 123 -m state --state ESTABLISHED     -j ACCEPT
 
@@ -161,6 +137,13 @@ then
     $IPT -A OUTPUT -p tcp --dport 22 -m state --state NEW,ESTABLISHED -j ACCEPT
     $IPT -A INPUT  -p tcp --sport 22 -m state --state ESTABLISHED     -j ACCEPT
     echo "SSH client firewall rules configured."
+
+#NTP Server: Allow incomming connections on port 123 (ntp)
+elif [ $SERVICE == 7 ]
+then
+    $IPT -A OUTPUT -p udp --sport 123 -m state --state ESTABLISHED     -j ACCEPT
+    $IPT -A INPUT  -p udp --dport 123 -m state --state NEW,ESTABLISHED -j ACCEPT
+    echo "NTP server firewall rules configured."
 
 elif [ $SERVICE == 0 ]
 then
