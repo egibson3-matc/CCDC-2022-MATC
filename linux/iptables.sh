@@ -64,6 +64,9 @@ $IPT -A INPUT  -p icmp -m state --state ESTABLISHED,RELATED     -j ACCEPT
 $IPT -A OUTPUT -p udp --dport 123 -m state --state NEW,ESTABLISHED -j ACCEPT
 $IPT -A INPUT  -p udp --sport 123 -m state --state ESTABLISHED     -j ACCEPT
 
+#Splunk Forwarder Rules
+$IPT -A OUTPUT -p tcp --dport 9997 -j ACCEPT
+$IPT -A OUTPUT -p tcp --dport 8089 -j ACCEPT
 
 #######################################################################################################
 #Specific Firewall Rules
