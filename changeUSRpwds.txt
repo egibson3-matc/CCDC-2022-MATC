@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# change user passwords
+
+  read -p "Would you like to change all of the user passwords? [YES|NO]" confirmChange
+  echo $confirmChange | tr '[a-z]' '[A-Z]'
+  if [ "$conifirmChange" == "YES" ]; then
+    newPassword=`dd if=/dev/urandom count=1 2>/dev/null | uuencode -m - | head -n 2 | tail -n 1 | cut -c -24`
+    echo "$newPassword"
+  fi

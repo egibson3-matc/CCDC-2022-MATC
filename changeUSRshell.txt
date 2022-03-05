@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# find some users and print a thing based on UID
+
+  for user in `cat /etc/passwd | grep -v nologin` ; do
+    echo "Generating usermod line using: $user"
+    echo $user |
+      awk -F":" '{ if ($3 > 1000) { print "usermod -s /bin/nologin " $1 } else { print "Skipping: user " $1 " is < 1000" }}' |
+      tee /tmp/linux-fix-users.log
+  done
